@@ -1,0 +1,18 @@
+name: GodPotion
+version: 0.1.0
+main: top.aurlemon.godpotion.GodPotion
+api-version: 1.20
+authors: [Aurlemon]
+description: A plugin that provides instant-kill potions.
+permissions:
+  godpotion.admin:
+    description: Allows getting the god potion.
+    default: op
+  godpotion.use:
+    description: Allows using the god potion.
+    default: op
+commands:
+  godpotion:
+    description: Main command for GodPotion plugin.
+    usage: /godpotion get <splash|lingering>
+    permission: godpotion.admin
