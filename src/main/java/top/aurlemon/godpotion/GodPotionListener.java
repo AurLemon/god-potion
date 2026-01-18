@@ -166,7 +166,7 @@ public class GodPotionListener implements Listener {
             // 如果 meta 有自定义效果也可以加，但我们只需要视觉
         }
         
-        cloud.setRadius(3.0f);
+        cloud.setRadius(5.0f);
         cloud.setRadiusOnUse(-0.5f); // 每次使用减少半径
         cloud.setDuration(600); // 30秒
         cloud.setParticle(Particle.DRAGON_BREATH); // 龙息粒子
@@ -208,7 +208,17 @@ public class GodPotionListener implements Listener {
         }
 
         // 对受影响实体执行秒杀
-        for (LivingEntity entity : event.getAffectedEntities()) {
+        java.util.Set<LivingEntity> targets = new java.util.HashSet<>(event.getAffectedEntities());
+        
+        // 额外搜索上下范围的实体 (扩充垂直范围)
+        // getNearbyEntities(x, y, z) 这里的参数是向各个方向扩展的大小
+        for (Entity e : cloud.getNearbyEntities(0, 3.0, 0)) {
+            if (e instanceof LivingEntity) {
+                targets.add((LivingEntity) e);
+            }
+        }
+
+        for (LivingEntity entity : targets) {
             executeBillLogic(entity, source);
         }
     }
@@ -232,12 +242,17 @@ public class GodPotionListener implements Listener {
             }
 
             if (marked) {
-                // 修改死亡信息
-                event.setDeathMessage(ChatColor.RED + player.getName() + " 被“神力”杀死了");
+                // 使用原版翻译键机制，传入“神力”作为参数
+                // "death.attack.player" 对应的翻译是 "%1$s was slain by %2$s" (根据客户端语言包含不同翻译)
+                event.setDeathMessage(null);
                 
-                // 移除标记，防止污染复活后状态（虽然 Metadata 在实体失效后通常会清空，但这里显式移除更好）
-                // 实际上 Metadata 绑定在 Entity 对象上，玩家重生是新 Entity (部分服配置可能同Entity?)
-                // Player 对象在重生时可能会变，也可能不变，移除总是好的。
+                net.md_5.bungee.api.chat.TranslatableComponent msg = new net.md_5.bungee.api.chat.TranslatableComponent("death.attack.player");
+                msg.addWith(player.getDisplayName()); // 参数1: 玩家名
+                msg.addWith("神力");                  // 参数2: 死亡原因
+                
+                plugin.getServer().spigot().broadcast(msg);
+                
+                // 移除标记
                 player.removeMetadata(plugin.getDeathMarkKey().getKey(), plugin);
             }
         }
