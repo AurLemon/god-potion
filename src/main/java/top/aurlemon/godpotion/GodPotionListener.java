@@ -18,7 +18,8 @@ import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.projectiles.ProjectileSource;
 
-import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 
 public class GodPotionListener implements Listener {
 
@@ -97,9 +98,22 @@ public class GodPotionListener implements Listener {
             }
         }
 
-        // 遍历受影响的实体并执行秒杀
-        Collection<LivingEntity> affected = event.getAffectedEntities();
-        for (LivingEntity entity : affected) {
+        // 遍历并执行秒杀
+        // 注意：event.getAffectedEntities() 依赖“会不会吃到药水效果”的判定。
+        // 某些场景（登录前保护、免疫药水效果、特殊无敌）可能导致玩家不在 affected 列表里，从而杀不死。
+        // 这里改为基于半径扫描附近实体，确保真正的“范围内即秒杀”。
+        Set<LivingEntity> targets = new HashSet<>(event.getAffectedEntities());
+
+        org.bukkit.Location loc = event.getPotion().getLocation();
+        double radiusXZ = 4.25; // 原版喷溅药水大致 4 格范围，略放大避免边缘误差
+        double radiusY = 2.25;
+        for (Entity e : loc.getWorld().getNearbyEntities(loc, radiusXZ, radiusY, radiusXZ)) {
+            if (e instanceof LivingEntity) {
+                targets.add((LivingEntity) e);
+            }
+        }
+
+        for (LivingEntity entity : targets) {
             executeBillLogic(entity, shooter);
         }
     }
@@ -207,12 +221,13 @@ public class GodPotionListener implements Listener {
             }
         }
 
-        // 对受影响实体执行秒杀
-        java.util.Set<LivingEntity> targets = new java.util.HashSet<>(event.getAffectedEntities());
-        
-        // 额外搜索上下范围的实体 (扩充垂直范围)
-        // getNearbyEntities(x, y, z) 这里的参数是向各个方向扩展的大小
-        for (Entity e : cloud.getNearbyEntities(0, 3.0, 0)) {
+        // 对范围内实体执行秒杀：不依赖 affectedEntities
+        Set<LivingEntity> targets = new HashSet<>(event.getAffectedEntities());
+
+        org.bukkit.Location loc = cloud.getLocation();
+        double radiusXZ = Math.max(0.0, cloud.getRadius());
+        double radiusY = 3.0;
+        for (Entity e : loc.getWorld().getNearbyEntities(loc, radiusXZ, radiusY, radiusXZ)) {
             if (e instanceof LivingEntity) {
                 targets.add((LivingEntity) e);
             }
